@@ -1,4 +1,5 @@
 state.yml
+check_mk_status.txt
 
 tests/01-simple/job.*
 tests/02-stash-wget/job.*

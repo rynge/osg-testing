@@ -31,6 +31,21 @@ def write_state(state):
         yaml.dump(state, f)
 
 
+def write_check_mk_status(state):
+    '''
+    see https://checkmk.com/cms_localchecks.html
+    '''
+    with open('check_mk_status.txt', 'w') as f:
+        for name, test_state in state.items():
+            status_code = 1
+            if 'last_status' in test_state and test_state['last_status'] == 'OK':
+                status_code = 0
+            comment = ''
+            if 'comment' in test_state:
+                comment = test_state['comment']
+            f.write('{} OSGTest-{} - {}\n'.format(status_code, name, comment))
+
+
 def condor_submit(name, cfg, state):
     '''
     Submit a new test
@@ -81,7 +96,6 @@ def condor_check(name, cfg, state):
         state['comment'] = ''
         state['next_submit'] = SUCCESS_NEXT
         return
-        
 
     # terminated, but not with 0
     if re.search('Job terminated', log_data):
@@ -122,7 +136,6 @@ def pegasus_submit(name, cfg, state):
     p = subprocess.run('cd tests/{} && {}'.format(name, cfg['submit_cmd']), 
                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout = p.stdout.decode()
-    log(stdout)
     if p.returncode != 0:
         log('condor_submit exited with {}'.format(p.returncode))
         log(stdout)
@@ -199,6 +212,7 @@ def main():
         print()
         pprint(state)
         write_state(state)
+        write_check_mk_status(state)
         
         time.sleep(10)
 
