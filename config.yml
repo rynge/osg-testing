@@ -1,0 +1,32 @@
+
+tests:
+
+    01-simple:
+        type: condor
+        submit_file: test.sub
+        log_file: job.log
+        pre_submit: rm -f job.*
+        
+    02-stash-wget:
+        type: condor
+        submit_file: test.sub
+        log_file: job.log
+        pre_submit: rm -f job.*
+
+    03-stashcp:
+        type: condor
+        submit_file: test.sub
+        log_file: job.log
+        pre_submit: rm -f job.*
+    
+    04-writable-stash:
+        type: condor
+        submit_file: test.sub
+        log_file: job.log
+        pre_submit: rm -f job.*
+
+    05-pegasus-scp-http:
+        type: pegasus
+        submit_cmd: ./submit.sh
+
+

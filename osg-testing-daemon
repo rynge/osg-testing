@@ -1,0 +1,207 @@
+#!/usr/bin/python3
+
+import time
+import yaml
+import os
+import subprocess
+import re
+from pprint import pprint
+
+
+SUCCESS_NEXT = time.time() + (10 * 60)
+FAILURE_NEXT = time.time() + (60 * 60)
+
+
+def log(msg):
+    # just print for now
+    print(msg)
+
+
+def load_state():
+    state = None
+    with open('state.yml') as f:
+        state = yaml.load(f)
+    if not state:
+        state = {}
+    return state
+
+
+def write_state(state):
+    with open('state.yml', 'w') as f:
+        yaml.dump(state, f)
+
+
+def condor_submit(name, cfg, state):
+    '''
+    Submit a new test
+    '''
+    log('Submitting new test for {} ...'.format(name))
+
+    state['last_submit'] = time.time()
+    state['next_submit'] = None
+
+    if 'pre_submit' in cfg:
+        p = subprocess.run('cd tests/{} && {}'.format(name, cfg['pre_submit']), 
+                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    p = subprocess.run('cd tests/{} && condor_submit {}'.format(name, cfg['submit_file']), 
+                       shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = p.stdout.decode()
+    if p.returncode != 0:
+        log('condor_submit exited with {}'.format(p.returncode))
+        log(stdout)
+        return
+
+    cluster_id = re.search('submitted to cluster ([0-9]+)\.', stdout).group(1)
+    state['last_cluster_id'] = cluster_id
+
+
+def condor_check(name, cfg, state):
+
+    # if there is already a time stamp for next submit, use it
+    if 'next_submit' in state and state['next_submit'] is not None:
+        if state['next_submit'] < time.time():
+            condor_submit(name, cfg, state)
+            return
+        log('   next test is scheduled to start in {:.0f} seconds'.format(state['next_submit'] - time.time()))
+        return
+    
+    # submit if there is no exixting log
+    log_path = os.path.join('tests', name, cfg['log_file'])
+    if not os.path.exists(log_path):
+        condor_submit(name, cfg, state)
+        return
+
+    # if there is a config file, figure out the state of the job
+    with open(log_path) as f:
+        log_data = f.read()
+
+    if re.search('Normal termination \(return value 0\)', log_data):
+        state['last_status'] = 'OK'
+        state['comment'] = ''
+        state['next_submit'] = SUCCESS_NEXT
+        return
+        
+
+    # terminated, but not with 0
+    if re.search('Job terminated', log_data):
+        # wait longer for the next job so we can be notified
+        state['next_submit'] = FAILURE_NEXT
+        state['last_status'] = 'FAILED'
+        state['comment'] = 'Non-zero exit code'
+        return
+
+    # held job
+
+    # timeouts
+    if state['last_submit'] + (10 * 60 * 60) < time.time():
+        # wait longer for the next job so we can be notified
+        state['next_submit'] = FAILURE_NEXT
+        state['last_status'] = 'FAILED'
+        state['comment'] = 'Job did not finished in the allotted time'
+        return
+
+    # not sure what happend
+    #state['last_status'] = 'UNKNOWN'
+    #state['comment'] = 'Unable to determine what happend with the job'
+
+
+def pegasus_submit(name, cfg, state):
+    '''
+    Submit a new test
+    '''
+    log('Submitting new test for {} ...'.format(name))
+
+    state['last_submit'] = time.time()
+    state['next_submit'] = None
+
+    if 'pre_submit' in cfg:
+        p = subprocess.run('cd tests/{} && {}'.format(name, cfg['pre_submit']), 
+                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    p = subprocess.run('cd tests/{} && {}'.format(name, cfg['submit_cmd']), 
+                       shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = p.stdout.decode()
+    log(stdout)
+    if p.returncode != 0:
+        log('condor_submit exited with {}'.format(p.returncode))
+        log(stdout)
+        return
+
+    workflow_dir = re.search('pegasus-status -l (\S+)', stdout).group(1)
+    state['last_workflow_dir'] = workflow_dir
+
+
+def pegasus_check(name, cfg, state):
+
+    # if there is already a time stamp for next submit, use it
+    if 'next_submit' in state and state['next_submit'] is not None:
+        if state['next_submit'] < time.time():
+            pegasus_submit(name, cfg, state)
+            return
+        log('   next test is scheduled to start in {:.0f} seconds'.format(state['next_submit'] - time.time()))
+        return
+
+    # get the current Pegasus status
+    if 'last_workflow_dir' in state and state['last_workflow_dir'] is not None:
+        p = subprocess.run('pegasus-status --rows {} | grep ^Summary'.format(state['last_workflow_dir']), 
+                           shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout = p.stdout.decode()
+        try:
+            status = re.search('DAG total \((\w+):1\)', stdout).group(1)
+        except:
+            status = None
+    else:
+        pegasus_submit(name, cfg, state)
+        return
+   
+    if status is None:
+        pass
+    elif status == "Running":
+        pass
+    elif status == "Failure":
+        # wait longer for the next job so we can be notified
+        state['next_submit'] = FAILURE_NEXT
+        state['last_status'] = 'FAILED'
+        state['comment'] = 'Workflow failed'
+    elif status == "Success":
+        state['next_submit'] = SUCCESS_NEXT
+        state['last_status'] = 'OK'
+        state['comment'] = ''
+    else:
+        log('Unknown status: {}'.format(status))
+
+
+
+def main():
+
+    with open('config.yml') as f:
+        config = yaml.load(f)
+    pprint(config)
+
+    state = load_state()
+
+    while True:
+        
+        print()
+        print()
+
+        for test_name, test_cfg in config['tests'].items():
+            log('Checking on {} ...'.format(test_name))
+            if test_name not in state:
+                state[test_name] = {}
+
+            if test_cfg['type'] == 'condor':
+                condor_check(test_name, test_cfg, state[test_name])
+            elif test_cfg['type'] == 'pegasus':
+                pegasus_check(test_name, test_cfg, state[test_name])
+
+        print()
+        pprint(state)
+        write_state(state)
+        
+        time.sleep(10)
+
+
+main()
+

@@ -1,0 +1,13 @@
+state.yml
+
+tests/01-simple/job.*
+tests/02-stash-wget/job.*
+tests/02-stash-wget/test.data
+tests/03-stashcp/job.*
+tests/03-stashcp/test.data
+tests/04-writable-stash/file.*
+tests/04-writable-stash/job.*
+tests/04-writable-stash/test.data
+tests/05-pegasus-scp-http/tutorial-pegasus
+
+
