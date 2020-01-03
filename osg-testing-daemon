@@ -93,7 +93,7 @@ def condor_check(name, cfg, state):
 
     if re.search('Normal termination \(return value 0\)', log_data):
         state['last_status'] = 'OK'
-        state['comment'] = ''
+        state['comment'] = 'OK'
         state['next_submit'] = SUCCESS_NEXT
         return
 
@@ -180,7 +180,7 @@ def pegasus_check(name, cfg, state):
     elif status == "Success":
         state['next_submit'] = SUCCESS_NEXT
         state['last_status'] = 'OK'
-        state['comment'] = ''
+        state['comment'] = 'OK'
     else:
         log('Unknown status: {}'.format(status))
 
