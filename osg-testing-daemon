@@ -8,8 +8,8 @@ import re
 from pprint import pprint
 
 
-SUCCESS_NEXT = time.time() + (10 * 60)
-FAILURE_NEXT = time.time() + (60 * 60)
+SUCCESS_NEXT = 10 * 60
+FAILURE_NEXT = 60 * 60
 
 
 def log(msg):
@@ -106,13 +106,13 @@ def condor_check(name, cfg, state):
     if re.search('Normal termination \(return value 0\)', log_data):
         state['last_status'] = 'OK'
         state['comment'] = 'OK'
-        state['next_submit'] = SUCCESS_NEXT
+        state['next_submit'] = time.time() + SUCCESS_NEXT
         return
 
     # terminated, but not with 0
     if re.search('Job terminated', log_data):
         # wait longer for the next job so we can be notified
-        state['next_submit'] = FAILURE_NEXT
+        state['next_submit'] = time.time() + FAILURE_NEXT
         state['last_status'] = 'FAILED'
         state['comment'] = condor_error_summary(name, cfg)
         return
@@ -122,7 +122,7 @@ def condor_check(name, cfg, state):
     # timeouts
     if state['last_submit'] + (10 * 60 * 60) < time.time():
         # wait longer for the next job so we can be notified
-        state['next_submit'] = FAILURE_NEXT
+        state['next_submit'] = time.time() + FAILURE_NEXT
         state['last_status'] = 'FAILED'
         state['comment'] = 'Job did not finished in the allotted time'
         return
@@ -186,11 +186,11 @@ def pegasus_check(name, cfg, state):
         pass
     elif status == "Failure":
         # wait longer for the next job so we can be notified
-        state['next_submit'] = FAILURE_NEXT
+        state['next_submit'] = time.time() + FAILURE_NEXT
         state['last_status'] = 'FAILED'
         state['comment'] = 'Workflow failed'
     elif status == "Success":
-        state['next_submit'] = SUCCESS_NEXT
+        state['next_submit'] = time.time() + SUCCESS_NEXT
         state['last_status'] = 'OK'
         state['comment'] = 'OK'
     else:
@@ -226,7 +226,7 @@ def main():
         write_state(state)
         write_check_mk_status(state)
         
-        time.sleep(10)
+        time.sleep(30)
 
 
 main()
