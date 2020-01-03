@@ -27,6 +27,7 @@ tests:
 
     05-pegasus-scp-http:
         type: pegasus
+        pre_submit: rm -rf tutorial-pegasus/wordfreq/work
         submit_cmd: ./submit.sh
 
 

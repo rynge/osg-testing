@@ -71,6 +71,18 @@ def condor_submit(name, cfg, state):
     state['last_cluster_id'] = cluster_id
 
 
+def condor_error_summary(name, cfg):
+    '''
+    Summarize potential error output from a job
+    '''
+    p = subprocess.run('cd tests/{} && cat job.err | tail -n 3 | tr \'\n\' \' \''.format(name), 
+                       shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = p.stdout.decode()
+    if stdout:
+        return stdout
+    return 'Unknown error'
+
+
 def condor_check(name, cfg, state):
 
     # if there is already a time stamp for next submit, use it
@@ -102,7 +114,7 @@ def condor_check(name, cfg, state):
         # wait longer for the next job so we can be notified
         state['next_submit'] = FAILURE_NEXT
         state['last_status'] = 'FAILED'
-        state['comment'] = 'Non-zero exit code'
+        state['comment'] = condor_error_summary(name, cfg)
         return
 
     # held job

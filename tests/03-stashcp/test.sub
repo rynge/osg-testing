@@ -1,6 +1,6 @@
 universe     = vanilla
 
-requirements = HAS_MODULES
+requirements = OSGVO_OS_STRING == "RHEL 7" && Arch == "X86_64" && HAS_MODULES == True
 
 executable   = test.sh
 arguments    =

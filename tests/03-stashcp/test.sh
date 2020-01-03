@@ -5,8 +5,10 @@ set -e
 echo "I'm running on "`hostname -f`
 echo "OSG site: $OSG_SITE_NAME"
 
+module load stashcache
+
 echo
 echo
 
-stashcp -debug stash://osgconnect/rynge/test.data test.data
+stashcp -d stash://osgconnect/rynge/test.data test.data
 
