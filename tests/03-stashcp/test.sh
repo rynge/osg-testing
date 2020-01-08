@@ -10,5 +10,5 @@ module load stashcache
 echo
 echo
 
-stashcp -d stash://osgconnect/public/rynge/test.data test.data
+stashcp -d stash:///osgconnect/public/rynge/test.data test.data
 
