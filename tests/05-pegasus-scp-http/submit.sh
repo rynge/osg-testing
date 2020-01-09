@@ -40,7 +40,7 @@ cat >sites.xml.template <<EOF
     <site  handle="condorpool" arch="x86_64" os="LINUX">
         <profile namespace="pegasus" key="style" >condor</profile>
         <profile namespace="condor" key="universe" >vanilla</profile>
-        <profile namespace="condor" key="requirements" >OSGVO_OS_STRING == "RHEL 7" &amp;&amp; HAS_MODULES == True</profile>
+        <profile namespace="condor" key="requirements" >OSGVO_OS_STRING == "RHEL 7" &amp;&amp; HAS_MODULES == True &amp;&amp; GLIDEIN_Site =!= "OSG_US_ASU_DEL"</profile>
         <profile namespace="condor" key="request_cpus" >1</profile>
         <profile namespace="condor" key="request_memory" >1 GB</profile>
         <profile namespace="condor" key="request_disk" >1 GB</profile>
