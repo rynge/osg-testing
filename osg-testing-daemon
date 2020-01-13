@@ -75,7 +75,7 @@ def condor_error_summary(name, cfg):
     '''
     Summarize potential error output from a job
     '''
-    p = subprocess.run('cd tests/{} && cat job.err | tail -n 3 | tr \'\n\' \' \''.format(name), 
+    p = subprocess.run('cd tests/{} && cat job.err | grep -v "LD_LIBRARY_PATH is set to" | tail -n 3 | tr \'\n\' \' \''.format(name), 
                        shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout = p.stdout.decode()
     if stdout:
